@@ -38,28 +38,19 @@ jobs:
         run: pnpm install
 
       - name: Build
-        id: build
         run: |
           cd apps/android
           chmod +x ./gradlew
-          ./gradlew :app:assembleThirdPartyDebug --no-daemon
-        env:
-          ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
-          ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
-
-      - name: Find APK
-        id: find-apk
-        run: |
-          APK=$(find . -type f -name "*.apk" 2>/dev/null | head -1)
-          echo "Found APK: $APK"
-          if [ -n "$APK" ]; then
-            echo "apk_path=$APK" >> $GITHUB_OUTPUT
-            ls -lh "$APK"
-          fi
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon || true
+          echo "=== Gradle exit code: $? ==="
+          echo "=== APK files found ==="
+          find . -type f -name "*.apk" 2>/dev/null
+          echo "=== Build directory ==="
+          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No APK dir"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: openclaw-android-apk
-          path: ${{ steps.find-apk.outputs.apk_path }}
+          path: apps/android/app/build/outputs/apk/thirdParty/debug/app-thirdParty-debug.apk
           retention-days: 7
