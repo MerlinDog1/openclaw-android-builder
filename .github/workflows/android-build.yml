@@ -1,0 +1,69 @@
+name: Build OpenClaw Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref (branch, tag, or commit SHA)'
+        required: false
+        default: 'main'
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout OpenClaw
+        uses: actions/checkout@v4
+        with:
+          repository: openclaw/openclaw
+          ref: ${{ inputs.ref || 'main' }}
+          sparse-checkout: |
+            apps/android
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+          sparse-checkout-cone-mode: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Android APK (ThirdParty Debug)
+        run: |
+          cd apps/android
+          chmod +x ./gradlew
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon --stacktrace
+        env:
+          ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
+          ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
+          JAVA_HOME: /opt/java/temurin-17.jdk
+
+      - name: Find APK
+        id: find-apk
+        run: |
+          APK=$(find apps/android -name "*.apk" -type f 2>/dev/null | head -1)
+          echo "apk_path=$APK" >> $GITHUB_OUTPUT
+          echo "APK found: $APK"
+          ls -lh "$APK" 2>/dev/null || echo "No APK found"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openclaw-android-${{ github.run_number }}
+          path: ${{ steps.find-apk.outputs.apk_path }}
+          retention-days: 7
