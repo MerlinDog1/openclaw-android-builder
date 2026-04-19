@@ -41,12 +41,13 @@ jobs:
         run: |
           cd apps/android
           chmod +x ./gradlew
-          ./gradlew :app:assembleThirdPartyDebug --no-daemon || true
-          echo "=== Gradle exit code: $? ==="
-          echo "=== APK files found ==="
-          find . -type f -name "*.apk" 2>/dev/null
-          echo "=== Build directory ==="
-          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No APK dir"
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon
+          echo "=== Exit code: $? ==="
+          echo "=== Checking outputs ==="
+          find . -name "*.apk" -type f 2>/dev/null
+          ls -la app/build/outputs/apk/ 2>/dev/null
+          ls -la app/build/outputs/apk/thirdParty/ 2>/dev/null
+          ls -la app/build/outputs/apk/thirdParty/debug/ 2>/dev/null
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
