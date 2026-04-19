@@ -57,6 +57,7 @@ jobs:
         id: find-apk
         run: |
           echo "=== Searching for APK ==="
+          find . -name "*.apk" -type f 2>/dev/null
           APK=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
           echo "APK=$APK" >> $GITHUB_OUTPUT
           echo "APK found: $APK"
