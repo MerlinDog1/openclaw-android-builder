@@ -41,19 +41,22 @@ jobs:
         run: |
           cd apps/android
           chmod +x ./gradlew
-          # Capture full build output to file
-          ./gradlew :app:assembleThirdPartyDebug --no-daemon 2>&1 | tee /tmp/build.log
-          echo "=== EXIT CODE ==="
-          echo $?
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon
         env:
           ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
           ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
 
-      - name: Show build log
-        if: failure()
+      - name: Find APK
         run: |
-          echo "=== FULL BUILD LOG ==="
-          cat /tmp/build.log
-          echo "=== DIRECTORY CONTENTS ==="
-          ls -la apps/android/app/build/ 2>/dev/null || echo "No build dir"
-          ls -la apps/android/app/build/outputs/ 2>/dev/null || echo "No outputs dir"
+          echo "=== Build outputs ==="
+          find apps/android -type f -name "*.apk" 2>/dev/null
+          APK=$(find apps/android -type f -name "*.apk" 2>/dev/null | head -1)
+          echo "APK_PATH=$APK"
+          echo "apk_path=$APK" >> $GITHUB_OUTPUT
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: openclaw-android-apk
+          path: ${{ steps.build.outputs.APK_PATH || '' }}
+          retention-days: 7
