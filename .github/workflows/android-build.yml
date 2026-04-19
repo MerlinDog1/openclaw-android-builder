@@ -36,29 +36,45 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Debug Android SDK
+        run: |
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+          ls -la $ANDROID_HOME/ 2>/dev/null || echo "SDK not found"
+          which sdkmanager 2>/dev/null || echo "not in PATH"
+          ls $ANDROID_HOME/cmdline-tools/latest/bin/ 2>/dev/null || echo "no cmdline-tools"
+
+      - name: Install Android SDK components
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platforms;android-34" 2>&1 | tail -10
+
       - name: Install dependencies
         run: pnpm install
 
       - name: Build Android APK (ThirdParty Debug)
+        id: build
         run: |
           cd apps/android
           chmod +x ./gradlew
-          ./gradlew :app:assembleThirdPartyDebug --no-daemon
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon --info 2>&1 | tail -150
         env:
           ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
           ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
 
       - name: Find APK
-        id: find-apk
         run: |
-          APK=$(find apps/android -name "*.apk" -type f 2>/dev/null | head -1)
-          echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          echo "APK found: $APK"
-          ls -lh "$APK" 2>/dev/null || echo "No APK found"
+          echo "=== Searching for APK ==="
+          find . -name "*.apk" -type f 2>/dev/null || echo "No APK found"
+          APK=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
+          if [ -n "$APK" ]; then
+            echo "apk_path=$APK" >> $GITHUB_OUTPUT
+            ls -lh "$APK"
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: openclaw-android-${{ github.run_number }}
-          path: ${{ steps.find-apk.outputs.apk_path }}
+          path: ${{ steps.build.outputs.apk_path || '' }}
           retention-days: 7
