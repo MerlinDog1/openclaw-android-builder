@@ -41,11 +41,19 @@ jobs:
         run: |
           cd apps/android
           chmod +x ./gradlew
-          ./gradlew :app:assembleThirdPartyDebug --no-daemon 2>&1
+          # Capture full build output to file
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon 2>&1 | tee /tmp/build.log
+          echo "=== EXIT CODE ==="
+          echo $?
         env:
           ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
           ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
 
-      - name: Check outputs
+      - name: Show build log
+        if: failure()
         run: |
-          ls -la apps/android/app/build/outputs/apk/ 2>/dev/null && echo "=== Found APK ===" || echo "No APK dir"
+          echo "=== FULL BUILD LOG ==="
+          cat /tmp/build.log
+          echo "=== DIRECTORY CONTENTS ==="
+          ls -la apps/android/app/build/ 2>/dev/null || echo "No build dir"
+          ls -la apps/android/app/build/outputs/ 2>/dev/null || echo "No outputs dir"
