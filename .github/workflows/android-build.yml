@@ -9,6 +9,9 @@ on:
         default: 'main'
         type: string
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,13 +22,7 @@ jobs:
         with:
           repository: openclaw/openclaw
           ref: ${{ inputs.ref || 'main' }}
-          sparse-checkout: |
-            apps/android
-            package.json
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-            scripts
-          sparse-checkout-cone-mode: false
+          fetch-depth: 1
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
