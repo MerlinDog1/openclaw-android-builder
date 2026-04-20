@@ -37,34 +37,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build APK (capture output)
+      - name: Build APK
         run: |
           cd apps/android
           chmod +x ./gradlew
-          mkdir -p /tmp/build-output
-          ./gradlew :app:assembleThirdPartyDebug --no-daemon > /tmp/build-output/gradle.log 2>&1
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon > /tmp/gradle.log 2>&1
           EXITCODE=$?
-          echo "Gradle exit code: $EXITCODE" >> /tmp/build-output/gradle.log
-          echo "=== GRADLE LOG ===" >> /tmp/build-output/gradle.log
-          cat /tmp/build-output/gradle.log
-          echo "=== GRADLE DONE ==="
-        env:
-          ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
-          ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
+          echo "=== Gradle exit code: $EXITCODE ===" >> /tmp/gradle.log
+          echo "=== Last 200 lines of gradle output ===" >> /tmp/gradle.log
+          tail -200 /tmp/gradle.log >> /tmp/gradle.log
+          echo "$EXITCODE" > /tmp/exitcode
+          if [ $EXITCODE -ne 0 ]; then echo "GRADLE_FAILED=true" >> $GITHUB_ENV; fi
 
       - name: Show build log
         run: |
           echo "=== Full Gradle Log ==="
-          cat /tmp/build-output/gradle.log
+          cat /tmp/gradle.log
 
       - name: Debug APK location
         run: |
-          echo "=== Looking for APKs ==="
+          echo "=== APK search ==="
           find . -name "*.apk" -type f 2>/dev/null
-          echo "=== Build directory ==="
-          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk outputs dir"
-          ls -la app/build/outputs/apk/thirdParty/ 2>/dev/null || echo "No thirdParty dir"
-          ls -la app/build/outputs/apk/thirdParty/debug/ 2>/dev/null || echo "No debug dir"
+          echo "=== APK dir ==="
+          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk outputs"
+          ls -la app/build/outputs/apk/thirdParty/ 2>/dev/null || echo "No thirdParty"
+          ls -la app/build/outputs/apk/thirdParty/debug/ 2>/dev/null || echo "No debug"
+          echo "=== Exit code ==="
+          cat /tmp/exitcode 2>/dev/null || echo "no exitcode"
 
       - name: Upload APK
         continue-on-error: true
