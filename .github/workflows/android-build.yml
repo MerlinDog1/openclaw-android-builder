@@ -37,21 +37,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
+      - name: Build APK
+        id: build
         run: |
           cd apps/android
           chmod +x ./gradlew
           ./gradlew :app:assembleThirdPartyDebug --no-daemon
-          echo "=== Exit code: $? ==="
-          echo "=== Checking outputs ==="
+          EXITCODE=$?
+          echo "Gradle exit code: $EXITCODE"
+          if [ $EXITCODE -ne 0 ]; then
+            echo "Build FAILED"
+            exit 1
+          fi
+        env:
+          ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
+          ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
+
+      - name: Find APK file
+        id: find-apk
+        run: |
+          echo "=== Looking for APK in $(pwd) ==="
           find . -name "*.apk" -type f 2>/dev/null
-          ls -la app/build/outputs/apk/ 2>/dev/null
-          ls -la app/build/outputs/apk/thirdParty/ 2>/dev/null
-          ls -la app/build/outputs/apk/thirdParty/debug/ 2>/dev/null
+          APK="apps/android/app/build/outputs/apk/thirdParty/debug/app-thirdParty-debug.apk"
+          echo "Checking: $APK"
+          if [ -f "$APK" ]; then
+            echo "Found APK at: $APK"
+            echo "apk_path=$APK" >> $GITHUB_OUTPUT
+            ls -lh "$APK"
+          else
+            echo "ERROR: APK not found at expected path!"
+            ls -la apps/android/app/build/outputs/apk/ 2>/dev/null || echo "No outputs/apk dir"
+            ls -la apps/android/app/build/outputs/apk/thirdParty/ 2>/dev/null || echo "No thirdParty dir"
+            ls -la apps/android/app/build/outputs/apk/thirdParty/debug/ 2>/dev/null || echo "No debug dir"
+            exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: openclaw-android-apk
-          path: apps/android/app/build/outputs/apk/thirdParty/debug/app-thirdParty-debug.apk
+          name: openclaw-android-apk-${{ github.run_number }}
+          path: ${{ steps.find-apk.outputs.apk_path }}
           retention-days: 7
