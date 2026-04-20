@@ -37,24 +37,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build APK
+      - name: Build APK (capture output)
         run: |
           cd apps/android
           chmod +x ./gradlew
-          ./gradlew :app:assembleThirdPartyDebug --no-daemon
+          mkdir -p /tmp/build-output
+          ./gradlew :app:assembleThirdPartyDebug --no-daemon > /tmp/build-output/gradle.log 2>&1
+          EXITCODE=$?
+          echo "Gradle exit code: $EXITCODE" >> /tmp/build-output/gradle.log
+          echo "=== GRADLE LOG ===" >> /tmp/build-output/gradle.log
+          cat /tmp/build-output/gradle.log
+          echo "=== GRADLE DONE ==="
         env:
           ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}
           ANDROID_SDK_ROOT: ${{ steps.setup-android.outputs.android-home }}
 
-      - name: Debug build output
+      - name: Show build log
         run: |
-          echo "=== APK locations ==="
+          echo "=== Full Gradle Log ==="
+          cat /tmp/build-output/gradle.log
+
+      - name: Debug APK location
+        run: |
+          echo "=== Looking for APKs ==="
           find . -name "*.apk" -type f 2>/dev/null
-          echo "=== Expected path check ==="
-          ls -la app/build/outputs/apk/thirdParty/debug/ 2>/dev/null || echo "Not found"
-          echo "=== Build outputs ==="
-          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs"
-          ls -la app/build/ 2>/dev/null || echo "No build dir"
+          echo "=== Build directory ==="
+          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk outputs dir"
+          ls -la app/build/outputs/apk/thirdParty/ 2>/dev/null || echo "No thirdParty dir"
+          ls -la app/build/outputs/apk/thirdParty/debug/ 2>/dev/null || echo "No debug dir"
 
       - name: Upload APK
         continue-on-error: true
